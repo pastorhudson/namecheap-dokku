@@ -65,12 +65,12 @@ def fetch_existing_records(api_user, api_key, username, client_ip, domain):
     return make_http_request("api.namecheap.com", "/xml.response", method="POST", params=payload)
 
 def update_dns_record(api_user, api_key, username, client_ip, subdomain, domain, new_ip):
-    """Update or add a specific subdomain record."""
+    """Update or add a specific subdomain A record, preserving all other records."""
     # Step 1: Fetch existing records
     existing_records_xml = fetch_existing_records(api_user, api_key, username, client_ip, domain)
     root = ET.fromstring(existing_records_xml)
 
-    # Step 2: Define the namespace and parse existing DNS records
+    # Step 2: Define the namespace and parse all DNS records
     namespace = {"ns": "http://api.namecheap.com/xml.response"}
     records = []
     for host in root.findall(".//ns:host", namespace):
@@ -81,15 +81,15 @@ def update_dns_record(api_user, api_key, username, client_ip, subdomain, domain,
             "TTL": host.attrib.get("TTL", "60"),
         })
 
-    # Step 3: Update or add the subdomain record
+    # Step 3: Update or add the subdomain A record
     updated = False
     for record in records:
-        if record["HostName"] == subdomain:
+        if record["HostName"] == subdomain and record["RecordType"] == "A":
             record["Address"] = new_ip
             updated = True
 
     if not updated:
-        # Add the subdomain if it doesn't exist
+        # Add the subdomain if it doesn't exist as an A record
         records.append({
             "HostName": subdomain,
             "RecordType": "A",
@@ -108,7 +108,7 @@ def update_dns_record(api_user, api_key, username, client_ip, subdomain, domain,
         "TLD": domain.split('.')[1],
     }
 
-    # Add records to the payload
+    # Add all records to the payload
     for i, record in enumerate(records, start=1):
         payload[f"HostName{i}"] = record["HostName"]
         payload[f"RecordType{i}"] = record["RecordType"]
@@ -122,12 +122,14 @@ def update_dns_record(api_user, api_key, username, client_ip, subdomain, domain,
     errors_element = response_tree.find(".//ns:Errors", namespace)
 
     if success_element is not None and success_element.attrib.get("IsSuccess") == "true":
-        print(f"DNS record updated successfully for {subdomain}.{domain} to {new_ip}.")
+        print(f"DNS A record updated successfully for {subdomain}.{domain} to {new_ip}.")
     else:
-        print(f"Failed to update DNS record for {subdomain}.{domain}.")
+        print(f"Failed to update DNS A record for {subdomain}.{domain}.")
         if errors_element is not None:
             errors = [error.text for error in errors_element.findall(".//ns:Error", namespace)]
             print("Errors:", errors)
+
+
 
 def get_wan_ip():
     """Fetch WAN IP address without requests."""
