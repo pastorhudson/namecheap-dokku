@@ -1,0 +1,9 @@
+[NamecheapAPI]
+api_user = your_api_username
+api_key = your_api_key
+username = your_account_username
+client_ip = your_client_ip
+
+[Domains]
+# Format: subdomain:domain
+subdomains = subdomain:domain.com, www:example.com, @:example.org
