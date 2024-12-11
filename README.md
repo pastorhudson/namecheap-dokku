@@ -111,7 +111,7 @@ To run this script every hour using a cron job, follow these steps:
 3. **Add the Cron Job**:
    Add the following line to execute the script every hour:
    ```bash
-   0 * * * * /usr/bin/python3 /path/to/main.py >> /path/to/logfile.log 2>&1
+   0 * * * * /usr/bin/python3 /path/to/update_namecheap.py >> /path/to/logfile.log 2>&1
    ```
    - Replace `/usr/bin/python3` with the path to your Python interpreter.
    - Replace `/path/to/update_namecheap.py` with the full path to your script.
