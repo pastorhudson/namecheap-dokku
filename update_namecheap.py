@@ -1,7 +1,9 @@
-import requests
+import http.client
+import urllib.parse
 import configparser
 import sys
-
+import json
+import xml.etree.ElementTree as ET
 
 def load_config():
     """Load API credentials and subdomain configurations from config.ini."""
@@ -26,6 +28,28 @@ def load_config():
 
     return api_user, api_key, username, client_ip, subdomains_dict
 
+def make_http_request(host, endpoint, method="GET", params=None):
+    """Make an HTTP request without using the requests library."""
+    if params:
+        params = urllib.parse.urlencode(params)
+    headers = {"Content-type": "application/x-www-form-urlencoded"}
+
+    conn = http.client.HTTPSConnection(host)
+    if method == "POST":
+        conn.request(method, endpoint, params, headers)
+    else:
+        if params:
+            endpoint = f"{endpoint}?{params}"
+        conn.request(method, endpoint)
+
+    response = conn.getresponse()
+    data = response.read().decode()
+    conn.close()
+
+    if response.status != 200:
+        raise Exception(f"HTTP request failed with status {response.status}: {response.reason}")
+
+    return data
 
 def fetch_existing_records(api_user, api_key, username, client_ip, domain):
     """Fetch existing DNS records for the given domain."""
@@ -38,13 +62,7 @@ def fetch_existing_records(api_user, api_key, username, client_ip, domain):
         "SLD": domain.split('.')[0],
         "TLD": domain.split('.')[1],
     }
-    response = requests.post("https://api.namecheap.com/xml.response", data=payload)
-    response.raise_for_status()
-    return response.text
-
-
-import xml.etree.ElementTree as ET
-
+    return make_http_request("api.namecheap.com", "/xml.response", method="POST", params=payload)
 
 def update_dns_record(api_user, api_key, username, client_ip, subdomain, domain, new_ip):
     """Update or add a specific subdomain record."""
@@ -96,13 +114,12 @@ def update_dns_record(api_user, api_key, username, client_ip, subdomain, domain,
         payload[f"RecordType{i}"] = record["RecordType"]
         payload[f"Address{i}"] = record["Address"]
         payload[f"TTL{i}"] = record["TTL"]
-    response = requests.post("https://api.namecheap.com/xml.response", data=payload)
-    response.raise_for_status()
 
-    # Parse the response XML to check for success
-    response_xml = ET.fromstring(response.text)
-    success_element = response_xml.find(".//ns:DomainDNSSetHostsResult", namespace)
-    errors_element = response_xml.find(".//ns:Errors", namespace)
+    response_xml = make_http_request("api.namecheap.com", "/xml.response", method="POST", params=payload)
+    response_tree = ET.fromstring(response_xml)
+
+    success_element = response_tree.find(".//ns:DomainDNSSetHostsResult", namespace)
+    errors_element = response_tree.find(".//ns:Errors", namespace)
 
     if success_element is not None and success_element.attrib.get("IsSuccess") == "true":
         print(f"DNS record updated successfully for {subdomain}.{domain} to {new_ip}.")
@@ -111,26 +128,18 @@ def update_dns_record(api_user, api_key, username, client_ip, subdomain, domain,
         if errors_element is not None:
             errors = [error.text for error in errors_element.findall(".//ns:Error", namespace)]
             print("Errors:", errors)
-        print(response.text)
 
 def get_wan_ip():
-    response = requests.get('https://api.ipify.org?format=json')
-    if response.status_code == 200:
-        return response.json()['ip']
-    else:
-        raise Exception("Failed to fetch WAN IP address")
+    """Fetch WAN IP address without requests."""
+    response = make_http_request("api.ipify.org", "/", method="GET", params={"format": "json"})
+    data = json.loads(response)
+    return data["ip"]
 
 def main():
     """Main script execution."""
-    # if len(sys.argv) != 2:
-    #     print("Usage: python script.py <new_ip_address>")
-    #     sys.exit(1)
-
-    # new_ip = sys.argv[1]
     api_user, api_key, username, client_ip, subdomains_dict = load_config()
     for subdomain, domain in subdomains_dict.items():
         update_dns_record(api_user, api_key, username, client_ip, subdomain, domain, get_wan_ip())
-
 
 if __name__ == "__main__":
     main()

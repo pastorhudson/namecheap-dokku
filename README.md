@@ -10,7 +10,7 @@ This Python script updates or adds specific DNS records (e.g., `A` records) for 
 - Adds new subdomain DNS records if they don’t already exist.
 - Preserves all other DNS records during the update process.
 - Uses a configuration file (`config.ini`) for credentials and domain/subdomain management.
-- Supports dynamic IP address updates via command-line arguments.
+- Automatically retrieves the current WAN IP address.
 
 ---
 
@@ -19,6 +19,7 @@ This Python script updates or adds specific DNS records (e.g., `A` records) for 
 - Python 3.7+
 - Namecheap API enabled for your account.
 - API credentials from your Namecheap account.
+- Internet connection.
 
 ---
 
@@ -32,16 +33,7 @@ This Python script updates or adds specific DNS records (e.g., `A` records) for 
 
 ---
 
-### 2. Install Dependencies
-
-Install the required Python modules:
-```bash
-pip install requests
-```
-
----
-
-### 3. Configure `config.ini`
+### 2. Configure `config.ini`
 
 Create a `config.ini` file in the project directory with the following structure:
 
@@ -53,7 +45,7 @@ username = your_account_username
 client_ip = your_client_ip
 
 [Domains]
-subdomains = home:pastorhudson.com, www:example.com, @:example.org
+subdomains = mysub:mydomain.com, www:example.com, @:example.org
 ```
 
 - Replace placeholders with your Namecheap API credentials and domains.
@@ -61,19 +53,13 @@ subdomains = home:pastorhudson.com, www:example.com, @:example.org
 
 ---
 
-### 4. Usage
+### 3. Usage
 
-Run the script with the desired IP address as a command-line argument:
+Run the script directly. The script automatically fetches the current WAN IP and updates the specified subdomains:
+
 ```bash
-python main.py <new_ip_address>
+python update_namecheap.py
 ```
-
-#### Example:
-```bash
-python main.py 192.168.1.1
-```
-
-This updates or adds the specified subdomains to point to `192.168.1.1`.
 
 ---
 
@@ -89,20 +75,53 @@ This updates or adds the specified subdomains to point to `192.168.1.1`.
 3. **Submit Updated Records**:
    - Sends all records (unchanged and updated) back to Namecheap via `namecheap.domains.dns.setHosts`.
 
+4. **WAN IP Retrieval**:
+   - Fetches the current WAN IP using `https://api.ipify.org`.
+
 ---
 
 ## Example Output
 
 ```plaintext
-Updating DNS record for home.pastorhudson.com with IP 192.168.1.1
-DNS record updated successfully for home.pastorhudson.com.
+Updating DNS record for mysub.mydomain.com with IP 203.0.113.42
+DNS record updated successfully for mysub.mydomain.com.
 
-Updating DNS record for www.example.com with IP 192.168.1.1
+Updating DNS record for www.example.com with IP 203.0.113.42
 DNS record updated successfully for www.example.com.
 
-Updating DNS record for example.org with IP 192.168.1.1
+Updating DNS record for example.org with IP 203.0.113.42
 DNS record updated successfully for example.org.
 ```
+
+---
+To run this script every hour using a cron job, follow these steps:
+
+1. **Make the Script Executable**:
+   Ensure the script is executable by running:
+   ```bash
+   chmod +x main.py
+   ```
+
+2. **Edit the Crontab**:
+   Open the crontab editor:
+   ```bash
+   crontab -e
+   ```
+
+3. **Add the Cron Job**:
+   Add the following line to execute the script every hour:
+   ```bash
+   0 * * * * /usr/bin/python3 /path/to/main.py >> /path/to/logfile.log 2>&1
+   ```
+   - Replace `/usr/bin/python3` with the path to your Python interpreter.
+   - Replace `/path/to/update_namecheap.py` with the full path to your script.
+   - Replace `/path/to/logfile.log` with the path to your desired log file.
+
+4. **Save and Exit**:
+   Save the file and exit the editor. The cron job will now run the script at the start of every hour.
+
+5. **Check Logs**:
+   Monitor the log file to ensure the script executes correctly and logs any errors or outputs.
 
 ---
 
@@ -136,5 +155,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Acknowledgments
 
 - Namecheap for providing a robust API for domain management.
-- Python community for powerful libraries like `requests` and `ElementTree`.
+- Python community for powerful libraries like `http.client` and `ElementTree`. 
 
+--- 
