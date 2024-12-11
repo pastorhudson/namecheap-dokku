@@ -105,7 +105,7 @@ def update_dns_record(api_user, api_key, username, client_ip, subdomain, domain,
     errors_element = response_xml.find(".//ns:Errors", namespace)
 
     if success_element is not None and success_element.attrib.get("IsSuccess") == "true":
-        print(f"DNS record updated successfully for {subdomain}.{domain}.")
+        print(f"DNS record updated successfully for {subdomain}.{domain} to {new_ip}.")
     else:
         print(f"Failed to update DNS record for {subdomain}.{domain}.")
         if errors_element is not None:
@@ -113,17 +113,23 @@ def update_dns_record(api_user, api_key, username, client_ip, subdomain, domain,
             print("Errors:", errors)
         print(response.text)
 
+def get_wan_ip():
+    response = requests.get('https://api.ipify.org?format=json')
+    if response.status_code == 200:
+        return response.json()['ip']
+    else:
+        raise Exception("Failed to fetch WAN IP address")
 
 def main():
     """Main script execution."""
-    if len(sys.argv) != 2:
-        print("Usage: python script.py <new_ip_address>")
-        sys.exit(1)
+    # if len(sys.argv) != 2:
+    #     print("Usage: python script.py <new_ip_address>")
+    #     sys.exit(1)
 
-    new_ip = sys.argv[1]
+    # new_ip = sys.argv[1]
     api_user, api_key, username, client_ip, subdomains_dict = load_config()
     for subdomain, domain in subdomains_dict.items():
-        update_dns_record(api_user, api_key, username, client_ip, subdomain, domain, new_ip)
+        update_dns_record(api_user, api_key, username, client_ip, subdomain, domain, get_wan_ip())
 
 
 if __name__ == "__main__":
