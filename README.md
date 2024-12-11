@@ -99,7 +99,7 @@ To run this script every hour using a cron job, follow these steps:
 1. **Make the Script Executable**:
    Ensure the script is executable by running:
    ```bash
-   chmod +x main.py
+   chmod +x update_namecheap.py
    ```
 
 2. **Edit the Crontab**:
